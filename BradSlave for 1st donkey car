@@ -1,0 +1,132 @@
+// Wire Slave Receiver
+// by Nicholas Zambetti <http://www.zambetti.com>
+
+// Demonstrates use of the Wire library
+// Receives data as an I2C/TWI slave device
+// Refer to the "Wire Master Writer" example for use with this
+
+// Created 29 March 2006
+// This is further improved to drive donkey car by Bradley 2-10-2017
+// This example code is in the public domain.
+
+#include<Servo.h>
+#include <Wire.h>
+int Bleft;
+int Bright;
+int Bfront;
+int Bbackward;
+int Bspeed_left;
+int Bspeed_right;
+int Bback_left;
+int Bback_right;
+int Val;
+int initialPosition=90;
+float a;
+int b;
+Servo myservo;
+void setup() {
+  Wire.begin(64);                // join i2c bus with address #8
+  Wire.onReceive(receiveEvent); // register event
+  Serial.begin(250000);             // start serial for output
+  myservo.attach(3);
+  pinMode(3, OUTPUT); //servo
+  pinMode(6, OUTPUT);
+  pinMode(7, OUTPUT);
+  pinMode(8, OUTPUT);
+  pinMode(5, OUTPUT);
+  pinMode(10, OUTPUT); //PWM R MOTOR enable
+  pinMode(11,OUTPUT); //PWM L MOTOR enable
+  
+}
+
+void loop() 
+{
+  delay(10);
+}
+
+// function that executes whenever data is received from master
+// this function is registered as an event, see setup()
+void receiveEvent(int howMany) 
+{
+  
+  Serial.print("Received ");
+  Serial.print(howMany);
+  Serial.print(" bytes (hex): \t");
+  
+  unsigned recv[4]; //recv[0]:- left/right motor. recv[1]:- PWM duty cycle
+  
+
+  for(int i=0; i<howMany;i++)
+  {
+    recv[i] = Wire.read();
+    Serial.print(recv[i], DEC); 
+    Serial.print("\t");          
+  }
+  
+  if(recv[0] == 0x00)
+  { //set steer motor PWM
+    
+    if ( recv[1] >= 150 && recv[1] <= 255 )
+    { 
+      //turn left
+      b = 256 - recv[1];
+      a = 0.2*b;
+      Val = 90-a;
+      myservo.write(Val);
+      Serial.println("Receive 1 = "); //edited
+      Serial.println(recv[1]);        //edited
+    }
+    else if (recv[1]>=5 && recv[1]<=100)
+    {
+      //turn right
+      a = 0.2*recv[1];
+      Val = 90+a;
+      myservo.write(Val);
+      Serial.println("Receive 1 = "); //edited
+      Serial.println(recv[1]);        //edited
+    }
+    else
+    {
+      //straight
+      myservo.write(initialPosition);  
+    }
+  }
+  else
+  { //set speed motor PWM
+    if ( recv[1] > 100 )
+    {
+      Bspeed_left = 0;
+      Bspeed_right = 0;
+      Bbackward = 256 - recv[1];
+      Bback_left = (Bleft + Bbackward*1.5) ;
+      Bback_right = (Bright + Bbackward*1.5) ;
+      
+      digitalWrite(6, HIGH);
+      digitalWrite(7, LOW);
+      digitalWrite(8, HIGH);
+      digitalWrite(5, LOW);
+      analogWrite(10, Bback_right);
+      analogWrite(11, Bback_left);
+    }
+    else
+    {
+       Bback_left = 0;
+       Bback_right = 0;
+       Bfront = recv[1];
+       Bspeed_left = (Bleft + Bfront*1.5) ;
+       Bspeed_right = (Bright + Bfront*1.5) ;
+       digitalWrite(6, LOW);
+       digitalWrite(7, HIGH);
+       digitalWrite(8, LOW);
+       digitalWrite(5, HIGH);
+       analogWrite(10, Bspeed_right); 
+       analogWrite(11, Bspeed_left);
+    }
+   }
+}
+  
+
+
+
+
+
