@@ -1,0 +1,106 @@
+//BradSlave for donkey car using ESC
+// Wire Slave Receiver
+// by Nicholas Zambetti <http://www.zambetti.com>
+
+// Demonstrates use of the Wire library
+// Receives data as an I2C/TWI slave device
+// Refer to the "Wire Master Writer" example for use with this
+
+// Created 10 JULY 2018
+// This is further improved to drive donkey car by Bradley 2-10-2017
+// This example code is in the public domain.
+
+
+#include <Wire.h>
+#include <Servo.h> //Reading servo motor library
+#include "ESC.h"
+Servo myservo; //Create an object for the servo
+int val; //Variable for storing servo angle
+int Bleft;
+int Bright;
+int Bfront;
+int Bbackward;
+int Bspeed_left;
+int Bspeed_right;
+int Bback_left;
+int Bback_right;
+int Initial_position=110;
+ESC esc(ESC::MODE_FORWARD_BACKWARD);
+void setup() 
+{
+  Wire.begin(64);                // join i2c bus with address #8
+  Wire.onReceive(receiveEvent);  // register event
+  Serial.begin(250000);  
+  myservo.attach(9);             //Set digital pin 9 as the command pin for determining the servo angle// start serial for output
+  myservo.write (Initial_position);
+  pinMode(5, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, OUTPUT);
+  pinMode(8, OUTPUT);
+  pinMode(9, OUTPUT);
+  pinMode(10,OUTPUT); //PWM LEFT MOTOR enable
+  pinMode(11,OUTPUT); //PWM RIGHT MOTOR enable
+  
+}
+
+void loop() 
+{
+  delay(10);
+}
+
+// function that executes whenever data is received from master
+// this function is registered as an event, see setup()
+void receiveEvent(int howMany) 
+{
+  
+  Serial.print("Received ");
+  Serial.print(howMany);
+  Serial.print(" bytes (hex): \t");
+  
+  unsigned recv[4]; //recv[0]:- left/right motor. recv[1]:- PWM duty cycle
+  for(int i=0; i<howMany;i++)
+  {
+    recv[i] = Wire.read();
+    Serial.print(recv[i], DEC);
+    Serial.print("\t");
+  }
+  
+  if(recv[0] == 0x00)
+  {                         //set steer motor PWM
+    if ( recv[1] > 150 )
+    {
+      Bleft = 0;
+      Bright = 256 - recv[1];
+      val = 90;
+      myservo.write(val); //Move the servo (left)
+    }
+    else
+    {
+      Bright = 0;
+      Bleft = recv[1];
+      val = 110;
+      myservo.write(val); //Move the servo (right)
+    }
+    
+  }
+  else
+  { //set speed motor PWM
+    if ( recv[1] > 150 )
+    {
+    esc.setSpeed(0);
+    esc.setDirection(ESC::BACKWARD);
+    esc.setSpeed(30);
+    delay(1000);
+      
+    }
+    else
+    {
+    esc.setSpeed(0);
+    esc.setDirection(ESC::FORWARD);
+    esc.setSpeed(99);
+     
+    }
+   }
+}
+  
+
